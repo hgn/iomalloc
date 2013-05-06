@@ -454,6 +454,60 @@ int iom_peek(struct iom_buffer *iom_buffer, unsigned char *buf,
 }
 
 
+/*
+ * iom_peek_update() can be used after iom_peek() to
+ * remove the still remaining chunk from the buffer.
+ * A iom_peek() followed by a iom_peek_update() is
+ * functional identical to iom_shift().
+ *
+ * This function return 0 for success or any other value
+ * to indicate an error.
+ *
+ * o EINVAL indicates that no chunk was saved.
+ */
+int iom_peek_update(struct iom_buffer *iom_buffer)
+{
+	int tail_to_end, encoded_len;
+	union encoder_cookie cookie;
+	size_t sc = sizeof(union encoder_cookie);
+
+	assert(iom_buffer);
+
+	if (!iom_cnt(iom_buffer))
+		return EINVAL;
+
+	tail_to_end = iom_tail_to_end(iom_buffer);
+	switch (tail_to_end) {
+	case 1:
+		cookie.s[0] = iom_buffer->buf[iom_buffer->tail];
+		cookie.s[1] = iom_buffer->buf[0];
+		encoded_len = ntohs(cookie.l);
+		break;
+	case 2:
+		cookie.s[0] = iom_buffer->buf[iom_buffer->tail];
+		cookie.s[1] = iom_buffer->buf[iom_buffer->tail + 1];
+		encoded_len = ntohs(cookie.l);
+		break;
+	default:
+		cookie.s[0] = iom_buffer->buf[iom_buffer->tail];
+		cookie.s[1] = iom_buffer->buf[iom_buffer->tail + 1];
+		encoded_len = ntohs(cookie.l);
+		break;
+	}
+
+	iom_tail_inc(iom_buffer, encoded_len + sc);
+
+	/* reset to 0 if to keep memory reference local */
+	if (iom_space(iom_buffer) == iom_buffer->size - 1) {
+		//iom_buffer->tail = iom_buffer->head = 0;
+		;
+	}
+
+	return 0;
+}
+
+
+
 int nearest_power_two(int k)
 {
 	int i;
