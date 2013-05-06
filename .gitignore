@@ -1,0 +1,15 @@
+iomalloc
+
+.*
+*.o
+*.o.*
+*.a
+*.so
+!.gitignore
+
+cscope.*
+ncscope.*
+
+*.orig
+*~
+\#*#
