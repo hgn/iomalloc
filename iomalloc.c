@@ -223,8 +223,6 @@ static __always_inline void iom_add_fast(struct iom_buffer *iom_buffer,
 
 	iom_buffer->buf[iom_buffer->head] = cookie.s[0];
 	iom_buffer->buf[iom_buffer->head + 1] = cookie.s[1];
-	fprintf(stderr, "cpy: %d hdr: %d size: %d space: %d\n",
-			len, iom_buffer->head, iom_buffer->size, iom_space_to_bound(iom_buffer));
 	memcpy(&iom_buffer->buf[iom_buffer->head + 2], buf, len);
 	iom_head_inc(iom_buffer, len + 2);
 }
