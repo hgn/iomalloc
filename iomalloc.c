@@ -395,7 +395,7 @@ int iom_shift(struct iom_buffer *iom_buffer, unsigned char *buf,
 		cookie.s[1] = iom_buffer->buf[iom_buffer->tail + 1];
 		encoded_len = ntohs(cookie.l);
 		if (encoded_len > max_size) return ENOBUFS;
-		if (tail_to_end >= encoded_len) {
+		if (tail_to_end - (int)sc >= encoded_len) {
 			memcpy(buf, &iom_buffer->buf[iom_buffer->tail + sc],
 			       encoded_len);
 		} else {
