@@ -83,6 +83,11 @@ struct iom_buffer {
 	unsigned char buf[FLEX_ARRAY];
 };
 
+struct iom_iterator {
+	int tail;
+	int head;
+};
+
 union encoder_cookie {
 	uint8_t s[2];
 	/* big endian for full encoding */
@@ -95,9 +100,15 @@ enum {
 };
 
 
+static unsigned int iom_cnt_int(int head, int tail, unsigned int size)
+{
+	return (head - tail) & (size - 1);
+}
+
+
 unsigned int iom_cnt(struct iom_buffer *iom_buffer)
 {
-	return (iom_buffer->head - iom_buffer->tail) & (iom_buffer->size - 1);
+	return iom_cnt_int(iom_buffer->head, iom_buffer->tail, iom_buffer->size);
 }
 
 
@@ -115,10 +126,16 @@ unsigned int iom_cnt_to_end(struct iom_buffer *iom_buffer)
 }
 
 
+static int iom_tail_to_end_int(unsigned int size, int tail)
+{
+	return size - tail;
+}
+
 static int iom_tail_to_end(struct iom_buffer *iom_buffer)
 {
-	return iom_buffer->size - iom_buffer->tail;
+	return iom_tail_to_end_int(iom_buffer->size, iom_buffer->tail);
 }
+
 
 static unsigned int iom_space_to_bound(struct iom_buffer *iom_buffer)
 {
@@ -139,9 +156,15 @@ static void iom_head_inc(struct iom_buffer *iom_buffer, int len)
 }
 
 
+static int iom_tail_inc_int(int tail, unsigned int size, int len)
+{
+	return (tail + len) & (size - 1);
+}
+
+
 void iom_tail_inc(struct iom_buffer *iom_buffer, int len)
 {
-	iom_buffer->tail = (iom_buffer->tail + len) & (iom_buffer->size - 1);
+	iom_buffer->tail = iom_tail_inc_int(iom_buffer->tail, iom_buffer->size, len);
 }
 
 
@@ -506,6 +529,87 @@ int iom_peek_update(struct iom_buffer *iom_buffer)
 	return 0;
 }
 
+struct iom_iterator *iom_iterator_new(struct iom_buffer *iom_buffer)
+{
+	struct iom_iterator *iom_iterator;
+
+	iom_iterator = malloc(sizeof(*iom_iterator));
+	if (!iom_iterator)
+		return NULL;
+
+	memset(iom_iterator, 0, sizeof(*iom_iterator));
+	iom_iterator->head = iom_buffer->head;
+	iom_iterator->tail = iom_buffer->tail;
+
+	return iom_iterator;
+}
+
+
+void iom_iterator_free(struct iom_iterator *iom_iterator)
+{
+	free(iom_iterator);
+}
+
+
+int iom_iterator_peek_next(struct iom_iterator *iom_iterator,
+			   struct iom_buffer *iom_buffer,
+			   unsigned char *buf, int *buf_len, int max_size)
+{
+	int tail_to_end, encoded_len, remaining;
+	union encoder_cookie cookie;
+	size_t sc = sizeof(union encoder_cookie);
+
+	assert(iom_buffer);
+	assert(max_size);
+	assert(buf_len);
+
+	if (!iom_cnt_int(iom_iterator->head, iom_iterator->tail, iom_buffer->size))
+		return EINVAL;
+
+	tail_to_end = iom_tail_to_end_int(iom_buffer->size, iom_iterator->tail);
+	switch (tail_to_end) {
+	case 1:
+		cookie.s[0] = iom_buffer->buf[iom_iterator->tail];
+		cookie.s[1] = iom_buffer->buf[0];
+		encoded_len = ntohs(cookie.l);
+		if (encoded_len > max_size) return ENOBUFS;
+		memcpy(buf, &iom_buffer->buf[1], encoded_len);
+		break;
+	case 2:
+		cookie.s[0] = iom_buffer->buf[iom_iterator->tail];
+		cookie.s[1] = iom_buffer->buf[iom_iterator->tail + 1];
+		encoded_len = ntohs(cookie.l);
+		if (encoded_len > max_size) return ENOBUFS;
+		memcpy(buf, &iom_buffer->buf[0], encoded_len);
+		break;
+	default:
+		cookie.s[0] = iom_buffer->buf[iom_iterator->tail];
+		cookie.s[1] = iom_buffer->buf[iom_iterator->tail + 1];
+		encoded_len = ntohs(cookie.l);
+		if (encoded_len > max_size) return ENOBUFS;
+		if (tail_to_end >= encoded_len) {
+			memcpy(buf, &iom_buffer->buf[iom_iterator->tail + sc],
+			       encoded_len);
+		} else {
+			remaining = encoded_len - (tail_to_end - sc);
+			memcpy(buf, &iom_buffer->buf[iom_iterator->tail + sc],
+			       tail_to_end - sc);
+			memcpy(&buf[tail_to_end -  sc], iom_buffer->buf,
+			       remaining);
+		}
+		break;
+	}
+
+	*buf_len = encoded_len;
+	iom_iterator->tail = iom_tail_inc_int(iom_iterator->tail,
+					      iom_buffer->size,
+					      encoded_len + sc);
+
+	return 0;
+}
+
+
+
 
 
 int nearest_power_two(int k)
@@ -513,7 +617,6 @@ int nearest_power_two(int k)
 	int i;
 
 	k--;
-
 	for (i = 1; i < (int)sizeof(int) * CHAR_BIT; i <<= 1)
 		k = k | k >> i;
 	return k + 1;
@@ -712,7 +815,65 @@ int peek_test(void)
 	ret = iom_peek_update(iom_buffer);
 	assert(ret != 0);
 
+	iom_free(iom_buffer);
 
+	return 0;
+}
+
+
+int iterator_test(void)
+{
+	int ret;
+	struct iom_buffer *iom_buffer;
+	struct iom_iterator *iom_iterator;
+	size_t size = 8;
+	unsigned char data;
+	unsigned char rdata;
+	int rdata_len;
+
+	ret = iom_init(size, &iom_buffer, 0);
+	if (ret) {
+		fputs("Cannot allocate iom_buffer\n", stderr);
+		return EXIT_FAILURE;
+	}
+
+	data = 1;
+	ret = iom_push(iom_buffer, &data, sizeof(data), IOM_TAIL_DROP);
+	if (ret) {
+		fprintf(stderr, "ERROR (ret: %d)\n", ret);
+		return EXIT_FAILURE;
+	}
+	fprintf(stderr, "  push iteration: %d\n", data);
+
+	data = 2;
+	ret = iom_push(iom_buffer, &data, sizeof(data), IOM_TAIL_DROP);
+	if (ret) {
+		fprintf(stderr, "ERROR (ret: %d)\n", ret);
+		return EXIT_FAILURE;
+	}
+	fprintf(stderr, "  push iteration: %d\n", data);
+
+	iom_iterator = iom_iterator_new(iom_buffer);
+	assert(iom_iterator);
+
+	ret = iom_iterator_peek_next(iom_iterator, iom_buffer, &rdata,
+				     &rdata_len, sizeof(rdata));
+	assert(ret == 0);
+	assert(rdata_len == sizeof(data));
+	assert(rdata == 1);
+
+
+	ret = iom_iterator_peek_next(iom_iterator, iom_buffer, &rdata,
+				     &rdata_len, sizeof(rdata));
+	assert(ret == 0);
+	assert(rdata_len == sizeof(data));
+	assert(rdata == 2);
+
+	ret = iom_iterator_peek_next(iom_iterator, iom_buffer, &rdata,
+				     &rdata_len, sizeof(rdata));
+	assert(ret != 0);
+
+	iom_iterator_free(iom_iterator);
 	iom_free(iom_buffer);
 
 	return 0;
@@ -728,18 +889,28 @@ int main(void)
 		fprintf(stderr, "space test 1 failed\n");
 		return EXIT_FAILURE;
 	}
+	fprintf(stderr, "space test 1 passed\n");
 
 	ret = space_test2();
 	if (ret) {
 		fprintf(stderr, "space test 2 failed\n");
 		return EXIT_FAILURE;
 	}
+	fprintf(stderr, "space test 2 passed\n");
 
 	ret = peek_test();
 	if (ret) {
 		fprintf(stderr, "peek test failed\n");
 		return EXIT_FAILURE;
 	}
+	fprintf(stderr, "peek test passed\n");
+
+	ret = iterator_test();
+	if (ret) {
+		fprintf(stderr, "iterator test failed\n");
+		return EXIT_FAILURE;
+	}
+	fprintf(stderr, "iterator test passed\n");
 
 
 	return EXIT_SUCCESS;
