@@ -336,7 +336,9 @@ int iom_push(struct iom_buffer *iom_buffer, unsigned char *buf,
 	return 0;
 }
 
-
+/*
+ * If ring is empty iom_shift return EINVAL, arguments are untouched.
+ */
 int iom_shift(struct iom_buffer *iom_buffer, unsigned char *buf,
 	     int *buf_len, int max_size)
 {
