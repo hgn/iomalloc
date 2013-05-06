@@ -704,6 +704,14 @@ int peek_test(void)
 	fprintf(stderr, "  shift iteration: %d, %d byte\n", rdata, rdata_len);
 	assert(rdata == data);
 
+	/* now new finally remove the peeked element from the buffer */
+	ret = iom_peek_update(iom_buffer);
+	assert(ret == 0);
+
+	/* this must fail, because no more chunks are in buffer */
+	ret = iom_peek_update(iom_buffer);
+	assert(ret != 0);
+
 
 	iom_free(iom_buffer);
 
@@ -717,19 +725,19 @@ int main(void)
 
 	ret = space_test();
 	if (ret) {
-		fprintf(stderr, "space test failed\n");
+		fprintf(stderr, "space test 1 failed\n");
 		return EXIT_FAILURE;
 	}
 
 	ret = space_test2();
 	if (ret) {
-		fprintf(stderr, "space test failed\n");
+		fprintf(stderr, "space test 2 failed\n");
 		return EXIT_FAILURE;
 	}
 
 	ret = peek_test();
 	if (ret) {
-		fprintf(stderr, "space test failed\n");
+		fprintf(stderr, "peek test failed\n");
 		return EXIT_FAILURE;
 	}
 
