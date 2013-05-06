@@ -606,6 +606,55 @@ int space_test2(void)
 	return 0;
 }
 
+
+int peek_test(void)
+{
+	int ret;
+	struct iom_buffer *iom_buffer;
+	size_t size = 8;
+	unsigned char data;
+	unsigned char rdata;
+	int rdata_len;
+
+	ret = iom_init(size, &iom_buffer, 0);
+	if (ret) {
+		fputs("Cannot allocate iom_buffer\n", stderr);
+		return EXIT_FAILURE;
+	}
+
+	data = 1;
+
+	ret = iom_push(iom_buffer, &data, sizeof(data), IOM_TAIL_DROP);
+	if (ret) {
+		fprintf(stderr, "ERROR (ret: %d)\n", ret);
+		return EXIT_FAILURE;
+	}
+	fprintf(stderr, "  push iteration: %d\n", data);
+
+	/* two successive tests, same result MUST be presented */
+	ret = iom_peek(iom_buffer, &rdata, &rdata_len, sizeof(rdata));
+	if (ret) {
+		fprintf(stderr, "Failed to get buffer (%d)\n", ret);
+		return EXIT_FAILURE;
+	}
+	fprintf(stderr, "  shift iteration: %d, %d byte\n", rdata, rdata_len);
+	assert(rdata == data);
+
+	ret = iom_peek(iom_buffer, &rdata, &rdata_len, sizeof(rdata));
+	if (ret) {
+		fprintf(stderr, "Failed to get buffer (%d)\n", ret);
+		return EXIT_FAILURE;
+	}
+	fprintf(stderr, "  shift iteration: %d, %d byte\n", rdata, rdata_len);
+	assert(rdata == data);
+
+
+	iom_free(iom_buffer);
+
+	return 0;
+}
+
+
 int main(void)
 {
 	int ret;
@@ -617,6 +666,12 @@ int main(void)
 	}
 
 	ret = space_test2();
+	if (ret) {
+		fprintf(stderr, "space test failed\n");
+		return EXIT_FAILURE;
+	}
+
+	ret = peek_test();
 	if (ret) {
 		fprintf(stderr, "space test failed\n");
 		return EXIT_FAILURE;
