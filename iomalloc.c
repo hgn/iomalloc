@@ -397,6 +397,61 @@ int iom_shift(struct iom_buffer *iom_buffer, unsigned char *buf,
 	return 0;
 }
 
+
+int iom_peek(struct iom_buffer *iom_buffer, unsigned char *buf,
+	     int *buf_len, int max_size)
+{
+	int tail_to_end, encoded_len, remaining;
+	union encoder_cookie cookie;
+	size_t sc = sizeof(union encoder_cookie);
+
+	assert(iom_buffer);
+	assert(max_size);
+	assert(buf_len);
+
+	if (!iom_cnt(iom_buffer))
+		return EINVAL;
+
+	tail_to_end = iom_tail_to_end(iom_buffer);
+	switch (tail_to_end) {
+	case 1:
+		cookie.s[0] = iom_buffer->buf[iom_buffer->tail];
+		cookie.s[1] = iom_buffer->buf[0];
+		encoded_len = ntohs(cookie.l);
+		if (encoded_len > max_size) return ENOBUFS;
+		memcpy(buf, &iom_buffer->buf[1], encoded_len);
+		break;
+	case 2:
+		cookie.s[0] = iom_buffer->buf[iom_buffer->tail];
+		cookie.s[1] = iom_buffer->buf[iom_buffer->tail + 1];
+		encoded_len = ntohs(cookie.l);
+		if (encoded_len > max_size) return ENOBUFS;
+		memcpy(buf, &iom_buffer->buf[0], encoded_len);
+		break;
+	default:
+		cookie.s[0] = iom_buffer->buf[iom_buffer->tail];
+		cookie.s[1] = iom_buffer->buf[iom_buffer->tail + 1];
+		encoded_len = ntohs(cookie.l);
+		if (encoded_len > max_size) return ENOBUFS;
+		if (tail_to_end >= encoded_len) {
+			memcpy(buf, &iom_buffer->buf[iom_buffer->tail + sc],
+			       encoded_len);
+		} else {
+			remaining = encoded_len - (tail_to_end - sc);
+			memcpy(buf, &iom_buffer->buf[iom_buffer->tail + sc],
+			       tail_to_end - sc);
+			memcpy(&buf[tail_to_end -  sc], iom_buffer->buf,
+			       remaining);
+		}
+		break;
+	}
+
+	*buf_len = encoded_len;
+
+	return 0;
+}
+
+
 int nearest_power_two(int k)
 {
 	int i;
