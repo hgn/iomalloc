@@ -764,6 +764,86 @@ int space_test2(void)
 }
 
 
+int space_test3(void)
+{
+	int ret;
+	struct iom_buffer *iom_buffer;
+	unsigned char buf;
+
+	ret = iom_init(8, &iom_buffer, 0);
+	if (ret) {
+		fputs("Cannot allocate iom_buffer\n", stderr);
+		return EXIT_FAILURE;
+	}
+
+	buf = 0;
+	ret = iom_push(iom_buffer, &buf, sizeof(buf), IOM_TAIL_DROP);
+	assert(ret == 0);
+
+	buf = 1;
+	ret = iom_push(iom_buffer, &buf, sizeof(buf), IOM_TAIL_DROP);
+	assert(ret == 0);
+
+	/* the following test MUST fail! Why, because local
+	 * accouning requires 2 byte for each chunk. If we save
+	 * 2 x 1byte we require 6 byte. If we want to save another
+	 * byte (with additional overhead of 2 bytes), the operation
+	 * MUST fail
+	 */
+	buf = 23;
+	ret = iom_push(iom_buffer, &buf, sizeof(buf), IOM_TAIL_DROP);
+	assert(ret != 0);
+
+	iom_free(iom_buffer);
+
+	return 0;
+}
+
+
+int space_test4(void)
+{
+	int ret, rbuf_len;
+	struct iom_buffer *iom_buffer;
+	unsigned char *buf;
+	unsigned char rbuf[3];
+
+	ret = iom_init(8, &iom_buffer, 0);
+	if (ret) {
+		fputs("Cannot allocate iom_buffer\n", stderr);
+		return EXIT_FAILURE;
+	}
+
+	buf = (unsigned char *)"AAA";
+	ret = iom_push(iom_buffer, buf, 3, IOM_TAIL_DROP);
+	assert(ret == 0);
+
+	ret = iom_shift(iom_buffer, rbuf, &rbuf_len, sizeof(rbuf));
+	if (ret) {
+		fprintf(stderr, "Failed to get buffer (%d)\n", ret);
+		return EXIT_FAILURE;
+	}
+
+	/* ok, head is now 3 + 2 byte shifted within iom_buffer */
+
+	buf = (unsigned char *)"BB";
+	ret = iom_push(iom_buffer, buf, 3, IOM_TAIL_DROP);
+	assert(ret == 0);
+
+
+	ret = iom_shift(iom_buffer, rbuf, &rbuf_len, sizeof(rbuf));
+	if (ret) {
+		fprintf(stderr, "Failed to get buffer (%d)\n", ret);
+		return EXIT_FAILURE;
+	}
+	assert(rbuf_len == 3);
+	fprintf(stderr, "x: \"%s\"\n", rbuf);
+
+	iom_free(iom_buffer);
+
+	return 0;
+}
+
+
 int peek_test(void)
 {
 	int ret;
@@ -896,6 +976,20 @@ int main(void)
 	}
 	fprintf(stderr, "space test 2 passed\n");
 
+	ret = space_test3();
+	if (ret) {
+		fprintf(stderr, "space test 3 failed\n");
+		return EXIT_FAILURE;
+	}
+	fprintf(stderr, "space test 3 passed\n");
+
+	ret = space_test4();
+	if (ret) {
+		fprintf(stderr, "space test 4 failed\n");
+		return EXIT_FAILURE;
+	}
+	fprintf(stderr, "space test 4 passed\n");
+
 	ret = peek_test();
 	if (ret) {
 		fprintf(stderr, "peek test failed\n");
@@ -909,7 +1003,6 @@ int main(void)
 		return EXIT_FAILURE;
 	}
 	fprintf(stderr, "iterator test passed\n");
-
 
 	return EXIT_SUCCESS;
 }
