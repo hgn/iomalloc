@@ -607,15 +607,13 @@ int iom_iterator_peek_next(struct iom_iterator *iom_iterator,
 }
 
 
-
-
-
-int nearest_power_two(int k)
+size_t iom_nearest_power_two(size_t k)
 {
-	int i;
+	size_t i;
 
+	if (k == 1) return 2;
 	k--;
-	for (i = 1; i < (int)sizeof(int) * CHAR_BIT; i <<= 1)
+	for (i = 1; i < sizeof(size_t) * CHAR_BIT; i <<= 1)
 		k = k | k >> i;
 	return k + 1;
 }
@@ -691,7 +689,7 @@ int space_test2(void)
 	struct iom_buffer *iom_buffer;
 	unsigned char buf[2048] = { 0 };
 	unsigned char rbuf[2048];
-	size_t size = nearest_power_two(32000);
+	size_t size = iom_nearest_power_two(32000);
 
 	ret = iom_init(size, &iom_buffer, 0);
 	if (ret) {
