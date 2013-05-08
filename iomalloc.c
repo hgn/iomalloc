@@ -181,8 +181,13 @@ int iom_init(size_t size, struct iom_buffer **iom_buffer, unsigned flags)
 	assert(size);
 	assert((size & (size - 1)) == 0);
 
-	/* unused yet */
-	(void) flags;
+	/*
+	 * Flags are not supported in this version,
+	 * make this API future proof and check flag
+	 * argument
+	 */
+	if (flags != 0)
+		return EINVAL;
 
 	if (size == 0)
 		return EINVAL;
