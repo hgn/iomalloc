@@ -955,6 +955,17 @@ int iterator_test(void)
 	return 0;
 }
 
+int nearest_power_test(void)
+{
+	assert(0 == iom_nearest_power_two(0));
+	assert(4 == iom_nearest_power_two(3));
+	assert(4 == iom_nearest_power_two(4));
+	assert(8 == iom_nearest_power_two(5));
+	assert(8 == iom_nearest_power_two(8));
+
+	return 0;
+}
+
 
 int main(void)
 {
@@ -1001,6 +1012,13 @@ int main(void)
 		return EXIT_FAILURE;
 	}
 	fprintf(stderr, "iterator test passed\n");
+
+	ret = nearest_power_test();
+	if (ret) {
+		fprintf(stderr, "nearest power test failed\n");
+		return EXIT_FAILURE;
+	}
+	fprintf(stderr, "nearest power of two test passed\n");
 
 	return EXIT_SUCCESS;
 }
