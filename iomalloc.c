@@ -184,6 +184,9 @@ int iom_init(size_t size, struct iom_buffer **iom_buffer, unsigned flags)
 	/* unused yet */
 	(void) flags;
 
+	if (size == 0)
+		return EINVAL;
+
 	iomb = malloc(sizeof(*iomb) + size);
 	if (!iomb)
 		return ENOBUFS;
