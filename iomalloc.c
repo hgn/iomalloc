@@ -988,6 +988,53 @@ int nearest_power_test(void)
 }
 
 
+int chunks_number_test(void)
+{
+	int ret, rbuf_len;
+	struct iom_buffer *iom_buffer;
+	unsigned char buf;
+	unsigned char rbuf[3];
+
+	ret = iom_init(8, &iom_buffer, 0);
+	if (ret) {
+		fputs("Cannot allocate iom_buffer\n", stderr);
+		return EXIT_FAILURE;
+	}
+	assert(iom_chunks(iom_buffer) == 0);
+
+	buf = 0;
+	ret = iom_push(iom_buffer, &buf, sizeof(buf), IOM_TAIL_DROP);
+	assert(ret == 0);
+	assert(iom_chunks(iom_buffer) == 1);
+
+	buf = 1;
+	ret = iom_push(iom_buffer, &buf, sizeof(buf), IOM_TAIL_DROP);
+	assert(ret == 0);
+	assert(iom_chunks(iom_buffer) == 2);
+
+	ret = iom_shift(iom_buffer, rbuf, &rbuf_len, sizeof(rbuf));
+	assert(ret == 0);
+	assert(iom_chunks(iom_buffer) == 1);
+
+	ret = iom_shift(iom_buffer, rbuf, &rbuf_len, sizeof(rbuf));
+	assert(ret == 0);
+	assert(iom_chunks(iom_buffer) == 0);
+
+	/*
+	 * following shift operation MUST fail. We test to failed
+	 * conditition and additionally test that the chunk size is
+	 * still zero
+	 */
+	ret = iom_shift(iom_buffer, rbuf, &rbuf_len, sizeof(rbuf));
+	assert(ret != 0);
+	assert(iom_chunks(iom_buffer) == 0);
+
+	iom_free(iom_buffer);
+
+	return 0;
+}
+
+
 int main(void)
 {
 	int ret;
@@ -1040,6 +1087,13 @@ int main(void)
 		return EXIT_FAILURE;
 	}
 	fprintf(stderr, "nearest power of two test passed\n");
+
+	ret = chunks_number_test();
+	if (ret) {
+		fprintf(stderr, "chunks number test failed\n");
+		return EXIT_FAILURE;
+	}
+	fprintf(stderr, "chunks number test passed\n");
 
 	return EXIT_SUCCESS;
 }
