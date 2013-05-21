@@ -77,6 +77,7 @@
  */
 struct iom_buffer {
 	unsigned int size;
+	unsigned int chunks;
 	/* buf index: no pointer, save 8 byte on some arch's */
 	int tail;
 	int head;
@@ -126,10 +127,17 @@ unsigned int iom_cnt_to_end(struct iom_buffer *iom_buffer)
 }
 
 
+unsigned int iom_chunks(struct iom_buffer *iom_buffer)
+{
+	return iom_buffer->chunks;
+}
+
+
 static int iom_tail_to_end_int(unsigned int size, int tail)
 {
 	return size - tail;
 }
+
 
 static int iom_tail_to_end(struct iom_buffer *iom_buffer)
 {
@@ -196,8 +204,9 @@ int iom_init(size_t size, struct iom_buffer **iom_buffer, unsigned flags)
 	if (!iomb)
 		return ENOBUFS;
 
-	iomb->tail = iomb->head = 0;
-	iomb->size = size;
+	iomb->tail   = iomb->head = 0;
+	iomb->size   = size;
+	iomb->chunks = 0;
 
 	*iom_buffer = iomb;
 
@@ -362,6 +371,8 @@ int iom_push(struct iom_buffer *iom_buffer, unsigned char *buf,
 		break;
 	}
 
+	iom_buffer->chunks++;
+
 	return 0;
 }
 
@@ -418,6 +429,7 @@ int iom_shift(struct iom_buffer *iom_buffer, unsigned char *buf,
 
 	*buf_len = encoded_len;
 	iom_tail_inc(iom_buffer, encoded_len + sc);
+	iom_buffer->chunks--;
 
 	/* reset to 0 if to keep memory reference local */
 	if (iom_space(iom_buffer) == iom_buffer->size - 1) {
@@ -525,6 +537,7 @@ int iom_peek_update(struct iom_buffer *iom_buffer)
 	}
 
 	iom_tail_inc(iom_buffer, encoded_len + sc);
+	iom_buffer->chunks--;
 
 	/* reset to 0 if to keep memory reference local */
 	if (iom_space(iom_buffer) == iom_buffer->size - 1) {
