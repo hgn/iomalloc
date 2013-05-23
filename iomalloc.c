@@ -855,7 +855,6 @@ int space_test4(void)
 		return EXIT_FAILURE;
 	}
 	assert(rbuf_len == 3);
-	fprintf(stderr, "x: \"%s\"\n", rbuf);
 
 	iom_free(iom_buffer);
 
@@ -1035,6 +1034,71 @@ int chunks_number_test(void)
 }
 
 
+#define IOM_BUF_SIZE 16
+int size_test(void)
+{
+	int ret, rbuf_len;
+	struct iom_buffer *iom_buffer;
+	unsigned char buf[4];
+	unsigned char rbuf[4];
+
+	ret = iom_init(IOM_BUF_SIZE, &iom_buffer, 0);
+	if (ret) {
+		fputs("Cannot allocate iom_buffer\n", stderr);
+		return EXIT_FAILURE;
+	}
+	assert(iom_chunks(iom_buffer) == 0);
+	assert(iom_space(iom_buffer) == IOM_BUF_SIZE - 1);
+
+
+	ret = iom_push(iom_buffer, buf, sizeof(buf), IOM_TAIL_DROP);
+	assert(ret == 0);
+	assert(iom_space(iom_buffer) == IOM_BUF_SIZE - 1 - sizeof(buf) - 2);
+
+
+	ret = iom_push(iom_buffer, buf, sizeof(buf), IOM_TAIL_DROP);
+	assert(ret == 0);
+	assert(iom_space(iom_buffer) == IOM_BUF_SIZE - 1 - (sizeof(buf) + 2) * 2);
+	assert(iom_chunks(iom_buffer) == 2);
+
+
+	ret = iom_shift(iom_buffer, rbuf, &rbuf_len, sizeof(rbuf));
+	assert(ret == 0);
+	assert(iom_chunks(iom_buffer) == 1);
+	assert(iom_space(iom_buffer) == IOM_BUF_SIZE - 1 - sizeof(buf) - 2);
+
+
+	ret = iom_shift(iom_buffer, rbuf, &rbuf_len, sizeof(rbuf));
+	assert(ret == 0);
+	assert(iom_chunks(iom_buffer) == 0);
+	assert(iom_space(iom_buffer) == IOM_BUF_SIZE - 1);
+
+	/*
+	 * following shift operation MUST fail. We test to failed
+	 * conditition and additionally test that the chunk size is
+	 * still zero
+	 */
+	ret = iom_shift(iom_buffer, rbuf, &rbuf_len, sizeof(rbuf));
+	assert(ret != 0);
+	assert(iom_chunks(iom_buffer) == 0);
+	assert(iom_space(iom_buffer) == IOM_BUF_SIZE - 1);
+
+
+	ret = iom_push(iom_buffer, buf, sizeof(buf), IOM_TAIL_DROP);
+	assert(ret == 0);
+	assert(iom_space(iom_buffer) == IOM_BUF_SIZE - 1 - sizeof(buf) - 2);
+
+	ret = iom_shift(iom_buffer, rbuf, &rbuf_len, sizeof(rbuf));
+	assert(ret == 0);
+	assert(iom_chunks(iom_buffer) == 0);
+	assert(iom_space(iom_buffer) == IOM_BUF_SIZE - 1);
+
+	iom_free(iom_buffer);
+
+	return 0;
+}
+
+
 int main(void)
 {
 	int ret;
@@ -1094,6 +1158,13 @@ int main(void)
 		return EXIT_FAILURE;
 	}
 	fprintf(stderr, "chunks number test passed\n");
+
+	ret = size_test();
+	if (ret) {
+		fprintf(stderr, "size test failed\n");
+		return EXIT_FAILURE;
+	}
+	fprintf(stderr, "size test passed\n");
 
 	return EXIT_SUCCESS;
 }
