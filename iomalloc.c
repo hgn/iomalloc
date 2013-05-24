@@ -177,7 +177,7 @@ static void iom_tail_inc(struct iom_buffer *iom_buffer, int len)
 }
 
 
-int continues_chunk_fast(struct iom_buffer *iom_buffer, size_t size)
+int iom_continues_chunk_fast(struct iom_buffer *iom_buffer, size_t size)
 {
 	return !!(iom_buffer->size - iom_buffer->head > size);
 }
