@@ -444,7 +444,7 @@ int iom_shift(struct iom_buffer *iom_buffer, unsigned char *buf,
 
 	/* reset to 0 if to keep memory reference local */
 	if (iom_space(iom_buffer) == iom_buffer->size - 1)
-		iom_buffer->tail = iom_buffer->head = 0;
+		iom_reset(iom_buffer);
 
 	return 0;
 }
@@ -550,7 +550,7 @@ int iom_peek_update(struct iom_buffer *iom_buffer)
 
 	/* reset to 0 if to keep memory reference local */
 	if (iom_space(iom_buffer) == iom_buffer->size - 1)
-		iom_buffer->tail = iom_buffer->head = 0;
+		iom_reset(iom_buffer);
 
 	return 0;
 }
