@@ -171,7 +171,7 @@ static int iom_tail_inc_int(int tail, unsigned int size, int len)
 }
 
 
-void iom_tail_inc(struct iom_buffer *iom_buffer, int len)
+static void iom_tail_inc(struct iom_buffer *iom_buffer, int len)
 {
 	iom_buffer->tail = iom_tail_inc_int(iom_buffer->tail, iom_buffer->size, len);
 }
