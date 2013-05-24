@@ -1095,7 +1095,7 @@ int size_test(void)
 }
 
 
-int chunk_taildrop_test(void)
+int chunk_headdrop_test(void)
 {
 	int ret, i;
 	struct iom_buffer *iom_buffer;
@@ -1194,12 +1194,12 @@ int main(void)
 	}
 	fprintf(stderr, "size test passed\n");
 
-	ret = chunk_taildrop_test();
+	ret = chunk_headdrop_test();
 	if (ret) {
-		fprintf(stderr, "chunk taildrop test failed\n");
+		fprintf(stderr, "chunk headdrop test failed\n");
 		return EXIT_FAILURE;
 	}
-	fprintf(stderr, "chunk taildrop test passed\n");
+	fprintf(stderr, "chunk headdrop test passed\n");
 
 
 	return EXIT_SUCCESS;
