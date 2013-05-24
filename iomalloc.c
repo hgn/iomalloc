@@ -222,6 +222,13 @@ void iom_reset(struct iom_buffer *iom_buffer)
 }
 
 
+void iom_reset_secure(struct iom_buffer *iom_buffer)
+{
+	iom_reset(iom_buffer);
+	memset(iom_buffer->buf, 0, iom_buffer->size);
+}
+
+
 void iom_free(struct iom_buffer *iom_buffer)
 {
 	assert(iom_buffer);
