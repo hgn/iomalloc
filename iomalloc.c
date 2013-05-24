@@ -330,6 +330,7 @@ static int enforce_buf_policy(struct iom_buffer *iom_buffer,
 			ret = purge_next(iom_buffer);
 			if (ret)
 				return ret;
+			iom_buffer->chunks--;
 		};
 		break;
 	case IOM_DROP_ALL:
@@ -1099,6 +1100,38 @@ int size_test(void)
 }
 
 
+int chunk_taildrop_test(void)
+{
+	int ret, i;
+	struct iom_buffer *iom_buffer;
+	unsigned char buf;
+
+	ret = iom_init(8, &iom_buffer, 0);
+	if (ret) {
+		fputs("Cannot allocate iom_buffer\n", stderr);
+		return EXIT_FAILURE;
+	}
+	assert(iom_chunks(iom_buffer) == 0);
+
+	buf = 0;
+	ret = iom_push(iom_buffer, &buf, sizeof(buf), IOM_HEAD_DROP);
+	assert(ret == 0);
+	assert(iom_chunks(iom_buffer) == 1);
+
+	i = 10;
+	do {
+		buf = 1;
+		ret = iom_push(iom_buffer, &buf, sizeof(buf), IOM_HEAD_DROP);
+		assert(ret == 0);
+		assert(iom_chunks(iom_buffer) == 2);
+	} while (i--);
+
+	iom_free(iom_buffer);
+
+	return 0;
+}
+
+
 int main(void)
 {
 	int ret;
@@ -1165,6 +1198,14 @@ int main(void)
 		return EXIT_FAILURE;
 	}
 	fprintf(stderr, "size test passed\n");
+
+	ret = chunk_taildrop_test();
+	if (ret) {
+		fprintf(stderr, "chunk taildrop test failed\n");
+		return EXIT_FAILURE;
+	}
+	fprintf(stderr, "chunk taildrop test passed\n");
+
 
 	return EXIT_SUCCESS;
 }
