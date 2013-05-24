@@ -283,7 +283,7 @@ static void iom_add_slow(struct iom_buffer *iom_buffer,
 }
 
 
-static int purge_next(struct iom_buffer *iom_buffer)
+static void purge_next(struct iom_buffer *iom_buffer)
 {
 	union encoder_cookie cookie;
 	int tail_to_end, encoded_len;
@@ -309,15 +309,12 @@ static int purge_next(struct iom_buffer *iom_buffer)
 	}
 
 	iom_tail_inc(iom_buffer, encoded_len + sc);
-
-	return 0;
 }
 
 
 static int enforce_buf_policy(struct iom_buffer *iom_buffer,
 		              size_t len, int flags)
 {
-	int ret;
 	const size_t sc = sizeof(union encoder_cookie);
 
 	switch (flags) {
@@ -327,9 +324,7 @@ static int enforce_buf_policy(struct iom_buffer *iom_buffer,
 		break;
 	case IOM_HEAD_DROP:
 		while (iom_space(iom_buffer) < len + sc) {
-			ret = purge_next(iom_buffer);
-			if (ret)
-				return ret;
+			purge_next(iom_buffer);
 			iom_buffer->chunks--;
 		};
 		break;
