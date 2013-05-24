@@ -150,6 +150,7 @@ static unsigned int iom_space_to_bound(struct iom_buffer *iom_buffer)
 	return iom_buffer->size - iom_buffer->head;
 }
 
+
 unsigned int iom_space_to_end(struct iom_buffer *iom_buffer)
 {
 	int n, end = iom_buffer->size - 1 - iom_buffer->tail;
@@ -211,6 +212,13 @@ int iom_init(size_t size, struct iom_buffer **iom_buffer, unsigned flags)
 	*iom_buffer = iomb;
 
 	return 0;
+}
+
+
+void iom_reset(struct iom_buffer *iom_buffer)
+{
+	iom_buffer->size = iom_buffer->chunks = 0;
+	iom_buffer->tail = iom_buffer->head = 0;
 }
 
 
