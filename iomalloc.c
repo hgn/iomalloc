@@ -113,7 +113,7 @@ unsigned int iom_cnt(struct iom_buffer *iom_buffer)
 }
 
 
-static unsigned int iom_space(struct iom_buffer *iom_buffer)
+unsigned int iom_space(struct iom_buffer *iom_buffer)
 {
 	return (iom_buffer->tail - (iom_buffer->head + 1)) & (iom_buffer->size - 1);
 }
