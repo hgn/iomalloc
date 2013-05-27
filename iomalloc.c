@@ -139,9 +139,9 @@ static int iom_tail_to_end_int(unsigned int size, int tail)
 }
 
 
-static int iom_tail_to_end(struct iom_buffer *iom_buffer)
+static unsigned int iom_tail_to_end(struct iom_buffer *iom_buffer)
 {
-	return iom_tail_to_end_int(iom_buffer->size, iom_buffer->tail);
+	return (unsigned int)iom_tail_to_end_int(iom_buffer->size, iom_buffer->tail);
 }
 
 
@@ -301,7 +301,8 @@ static void iom_add_slow(struct iom_buffer *iom_buffer,
 static void purge_next(struct iom_buffer *iom_buffer)
 {
 	union encoder_cookie cookie;
-	int tail_to_end, encoded_len;
+	unsigned int tail_to_end;
+	int encoded_len;
 	size_t sc = sizeof(union encoder_cookie);
 
 	tail_to_end = iom_tail_to_end(iom_buffer);
@@ -391,9 +392,11 @@ int iom_push(struct iom_buffer *iom_buffer, unsigned char *buf,
  * If ring is empty iom_shift return EINVAL, arguments are untouched.
  */
 int iom_shift(struct iom_buffer *iom_buffer, unsigned char *buf,
-	      unsigned int *buf_len, int max_size)
+	      unsigned int *buf_len, unsigned int max_size)
 {
-	int tail_to_end, encoded_len, remaining;
+	unsigned int tail_to_end;
+	unsigned int encoded_len;
+	int remaining;
 	union encoder_cookie cookie;
 	size_t sc = sizeof(union encoder_cookie);
 
@@ -425,7 +428,7 @@ int iom_shift(struct iom_buffer *iom_buffer, unsigned char *buf,
 		cookie.s[1] = iom_buffer->buf[iom_buffer->tail + 1];
 		encoded_len = ntohs(cookie.l);
 		if (encoded_len > max_size) return ENOBUFS;
-		if (tail_to_end - (int)sc >= encoded_len) {
+		if (tail_to_end - sc >= encoded_len) {
 			memcpy(buf, &iom_buffer->buf[iom_buffer->tail + sc],
 			       encoded_len);
 		} else {
@@ -451,15 +454,17 @@ int iom_shift(struct iom_buffer *iom_buffer, unsigned char *buf,
 
 
 int iom_peek(struct iom_buffer *iom_buffer, unsigned char *buf,
-	     unsigned int *buf_len, int max_size)
+	     unsigned int *buf_len, unsigned int max_size)
 {
-	int tail_to_end, encoded_len, remaining;
+	unsigned int tail_to_end;
+	int remaining;
+	unsigned int encoded_len;
 	union encoder_cookie cookie;
 	size_t sc = sizeof(union encoder_cookie);
 
 	assert(iom_buffer);
-	assert(max_size);
 	assert(buf_len);
+	assert(max_size > 0);
 
 	if (!iom_cnt(iom_buffer))
 		return EINVAL;
@@ -517,7 +522,8 @@ int iom_peek(struct iom_buffer *iom_buffer, unsigned char *buf,
  */
 int iom_peek_update(struct iom_buffer *iom_buffer)
 {
-	int tail_to_end, encoded_len;
+	unsigned int tail_to_end;
+	int encoded_len;
 	union encoder_cookie cookie;
 	size_t sc = sizeof(union encoder_cookie);
 
@@ -652,7 +658,8 @@ size_t iom_nearest_power_two(size_t k)
 
 int space_test(void)
 {
-	int ret, i, j, rbuf_len;
+	int ret, i, j;
+	unsigned int rbuf_len;
 	struct iom_buffer *iom_buffer;
 	unsigned char buf[2048] = { 0 };
 	unsigned char rbuf[2048];
@@ -668,7 +675,8 @@ int space_test(void)
 
 	i = 1000;
 	while (i--) {
-		int iter, cnt = (rand() % 10) + 1;
+		int iter;
+		unsigned int cnt = (rand() % 10) + 1;
 		iter = (rand() % 100) + 1;
 		fprintf(stderr, "push %d\n", cnt);
 
@@ -713,7 +721,8 @@ int space_test(void)
 
 int space_test2(void)
 {
-	int ret, i, j, rbuf_len;
+	int ret, i, j;
+	unsigned int rbuf_len;
 	struct iom_buffer *iom_buffer;
 	unsigned char buf[2048] = { 0 };
 	unsigned char rbuf[2048];
@@ -727,7 +736,8 @@ int space_test2(void)
 
 	i = 1000;
 	while (i--) {
-		int iter, cnt = (rand() % 1500) + 1;
+		int iter;
+		unsigned int cnt = (rand() % 1500) + 1;
 		iter = (rand() % 100) + 1;
 		fprintf(stderr, "push %d byte\n", cnt);
 
@@ -828,7 +838,8 @@ int space_test3(void)
 
 int space_test4(void)
 {
-	int ret, rbuf_len;
+	int ret;
+	unsigned int rbuf_len;
 	struct iom_buffer *iom_buffer;
 	unsigned char *buf;
 	unsigned char rbuf[3];
@@ -876,7 +887,7 @@ int peek_test(void)
 	size_t size = 8;
 	unsigned char data;
 	unsigned char rdata;
-	int rdata_len;
+	unsigned int rdata_len;
 
 	ret = iom_init(size, &iom_buffer, 0);
 	if (ret) {
@@ -996,7 +1007,8 @@ int nearest_power_test(void)
 
 int chunks_number_test(void)
 {
-	int ret, rbuf_len;
+	int ret;
+	unsigned int rbuf_len;
 	struct iom_buffer *iom_buffer;
 	unsigned char buf;
 	unsigned char rbuf[3];
@@ -1044,7 +1056,8 @@ int chunks_number_test(void)
 #define IOM_BUF_SIZE 16
 int size_test(void)
 {
-	int ret, rbuf_len;
+	int ret;
+	unsigned int rbuf_len;
 	struct iom_buffer *iom_buffer;
 	unsigned char buf[4];
 	unsigned char rbuf[4];
