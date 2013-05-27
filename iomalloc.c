@@ -391,7 +391,7 @@ int iom_push(struct iom_buffer *iom_buffer, unsigned char *buf,
  * If ring is empty iom_shift return EINVAL, arguments are untouched.
  */
 int iom_shift(struct iom_buffer *iom_buffer, unsigned char *buf,
-	     int *buf_len, int max_size)
+	      unsigned int *buf_len, int max_size)
 {
 	int tail_to_end, encoded_len, remaining;
 	union encoder_cookie cookie;
@@ -451,7 +451,7 @@ int iom_shift(struct iom_buffer *iom_buffer, unsigned char *buf,
 
 
 int iom_peek(struct iom_buffer *iom_buffer, unsigned char *buf,
-	     int *buf_len, int max_size)
+	     unsigned int *buf_len, int max_size)
 {
 	int tail_to_end, encoded_len, remaining;
 	union encoder_cookie cookie;
