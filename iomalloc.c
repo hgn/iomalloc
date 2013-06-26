@@ -107,18 +107,28 @@ static unsigned int iom_cnt_int(int head, int tail, unsigned int size)
 }
 
 
+/**
+ * Returns the number of bytes currently occupying iom_buffer
+ */
 unsigned int iom_cnt(struct iom_buffer *iom_buffer)
 {
 	return iom_cnt_int(iom_buffer->head, iom_buffer->tail, iom_buffer->size);
 }
 
 
+/**
+ * Returns the amount of space left in iom_buffer
+ */
 unsigned int iom_space(struct iom_buffer *iom_buffer)
 {
 	return (iom_buffer->tail - (iom_buffer->head + 1)) & (iom_buffer->size - 1);
 }
 
 
+/**
+ * Returns the number of consecutive bytes that can be extracted from
+ * the buffer without having to wrap back to the beginning of the buffer.
+ */
 unsigned int iom_cnt_to_end(struct iom_buffer *iom_buffer)
 {
 	int n, end = iom_buffer->size - iom_buffer->tail;
@@ -127,6 +137,9 @@ unsigned int iom_cnt_to_end(struct iom_buffer *iom_buffer)
 }
 
 
+/**
+ * Returns number of chunks in the buffer - not bytes
+ */
 unsigned int iom_chunks(struct iom_buffer *iom_buffer)
 {
 	return iom_buffer->chunks;
@@ -151,6 +164,11 @@ static unsigned int iom_space_to_bound(struct iom_buffer *iom_buffer)
 }
 
 
+/**
+ * Returns the amount of consecutive space left in the iom_buffer into which
+ * items can be immediately inserted without having to wrap back to the
+ * beginning of the buffer.
+ */
 unsigned int iom_space_to_end(struct iom_buffer *iom_buffer)
 {
 	int n, end = iom_buffer->size - 1 - iom_buffer->tail;
